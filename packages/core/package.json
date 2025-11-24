@@ -1,6 +1,7 @@
 {
   "name": "@repo/core",
   "version": "0.0.1",
+  "private": true,
   "description": "Core logic for create-fast-dev CLI",
   "type": "module",
   "exports": {

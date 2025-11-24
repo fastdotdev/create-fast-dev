@@ -2,8 +2,6 @@
   "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
   "changelog": ["@changesets/changelog-github", { "repo": "fastdotdev/create-fast-dev" }],
   "commit": false,
-  "fixed": ["@repo/core", "@repo/shared"],
-  "ignore": ["@repo/core", "@repo/shared"],
   "linked": [],
   "access": "public",
   "baseBranch": "main",

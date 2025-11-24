@@ -1,6 +1,7 @@
 {
   "name": "@repo/shared",
   "version": "0.0.1",
+  "private": true,
   "description": "Shared types and utilities for create-fast-dev",
   "type": "module",
   "scripts": {
