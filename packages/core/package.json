@@ -1,0 +1,35 @@
+{
+  "name": "@repo/core",
+  "version": "0.0.1",
+  "description": "Core logic for create-fast-dev CLI",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "watch": "unbuild --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.1",
+    "@repo/shared": "workspace:*",
+    "conf": "^13.0.1",
+    "consola": "^3.4.0",
+    "execa": "^9.5.2",
+    "giget": "^1.2.3",
+    "magicast": "^0.3.5",
+    "picocolors": "^1.1.1"
+  }
+}

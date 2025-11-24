@@ -1,0 +1,55 @@
+{
+  "name": "create-fast-dev-monorepo",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.23.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "watch": "turbo watch build",
+    "dev": "tsx packages/cli/src/index.ts",
+    "test": "turbo run test",
+    "test:watch": "vitest",
+    "lint": "turbo run lint",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "fix": "pnpm lint:fix && pnpm format:fix",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean && rm -rf node_modules .turbo",
+    "link:cli": "pnpm build && pnpm link --global --dir packages/cli",
+    "prepare": "husky",
+    "changeset:version": "changeset version",
+    "changeset:release": "pnpm build && changeset publish",
+    "changeset": "changeset"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.5.0",
+    "@changesets/cli": "^2.27.10",
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "eslint-plugin-unused-imports": "^4.3.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.3.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.19.0",
+    "unbuild": "^3.3.1",
+    "vitest": "^3.0.4"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@repo/shared": ["./packages/shared/src"],
+      "@repo/core": ["./packages/core/src"],
+      "@repo/cli": ["./packages/cli/src"]
+    }
+  }
+}

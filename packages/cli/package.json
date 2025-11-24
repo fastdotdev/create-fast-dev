@@ -1,0 +1,47 @@
+{
+  "name": "create-fast-dev",
+  "version": "0.0.1",
+  "description": "CLI to scaffold fast-dev template projects",
+  "type": "module",
+  "bin": {
+    "create-fast-dev": "./dist/index.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "watch": "unbuild --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.1",
+    "@repo/core": "workspace:*",
+    "@repo/shared": "workspace:*",
+    "citty": "^0.1.6",
+    "picocolors": "^1.1.1"
+  },
+  "keywords": [
+    "cli",
+    "scaffold",
+    "template",
+    "fast-dev",
+    "create"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fastdotdev/create-fast-dev.git"
+  },
+  "license": "MIT"
+}
