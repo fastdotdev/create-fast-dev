@@ -18,8 +18,25 @@ export function handleCancel<T>(value: T | symbol): value is symbol {
 
 /**
  * Prompt for template selection with stack grouping
+ * Returns null if no templates are available
  */
-export async function promptTemplateSelection(): Promise<Template> {
+export async function promptTemplateSelection(): Promise<Template | null> {
+  // Check if we have any templates at all
+  const allTemplates = getAllTemplates();
+  if (allTemplates.length === 0) {
+    p.log.error("No templates available");
+    p.log.info(
+      "Templates need to be added to the registry before you can create a project."
+    );
+    return null;
+  }
+
+  // Check if we have any stacks
+  if (stacks.length === 0) {
+    // No stacks defined, show all templates directly
+    return promptFromTemplateList(allTemplates);
+  }
+
   // First, select a stack
   const stackOptions = stacks.map((stack) => ({
     value: stack.id,
@@ -42,7 +59,6 @@ export async function promptTemplateSelection(): Promise<Template> {
   if (stackTemplates.length === 0) {
     p.log.warn("No templates available for this stack");
     // Fall back to showing all templates
-    const allTemplates = getAllTemplates();
     return promptFromTemplateList(allTemplates);
   }
 

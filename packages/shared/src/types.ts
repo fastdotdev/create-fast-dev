@@ -59,7 +59,9 @@ export type BuiltinTransformer =
   | "toggle-feature"
   | "update-config"
   | "env-setup"
-  | "readme-personalize";
+  | "readme-personalize"
+  | "monorepo-adapt"
+  | "tsconfig-adapt";
 
 /**
  * Template transformation configuration
@@ -150,6 +152,12 @@ export interface TransformContext {
   answers: Record<string, unknown>;
   /** The template being scaffolded */
   template: Template;
+  /** Installation mode (standalone or monorepo) */
+  mode: InstallationMode;
+  /** Monorepo context if in monorepo mode */
+  monorepoContext?: MonorepoContext;
+  /** Template config from fast-dev.config.json */
+  templateConfig?: TemplateConfig;
 }
 
 /**
@@ -181,4 +189,125 @@ export interface CliOptions {
   output?: string;
   /** Enable debug logging */
   debug?: boolean;
+}
+
+// ============================================
+// Monorepo & Template Config Types
+// ============================================
+
+/**
+ * Monorepo target type - where templates should be installed
+ */
+export type MonorepoTargetType = "app" | "package";
+
+/**
+ * Installation mode for template
+ */
+export type InstallationMode = "standalone" | "monorepo";
+
+/**
+ * Monorepo-specific configuration in fast-dev.config.json
+ */
+export interface MonorepoConfig {
+  /** Whether this template supports monorepo installation */
+  enabled: boolean;
+  /** Whether this is an "app" or "package" in a monorepo context */
+  type: MonorepoTargetType;
+  /** Default subdirectory within apps/ or packages/ (defaults to project name) */
+  defaultDir?: string;
+  /** Files to remove when installed in monorepo mode */
+  removeFiles?: string[];
+  /** Dependencies that should use workspace protocol in monorepo mode */
+  workspaceDeps?: string[];
+  /** tsconfig settings for monorepo mode */
+  tsconfig?: {
+    /** Base config to extend (e.g., "../../tsconfig.base.json") */
+    extends?: string;
+    /** Compiler options to override in monorepo mode */
+    overrides?: Record<string, unknown>;
+  };
+}
+
+/**
+ * Template config file schema (fast-dev.config.json)
+ * Lives in template repositories
+ */
+export interface TemplateConfig {
+  /** Schema version for forward compatibility */
+  $schema?: string;
+  version: "1.0";
+
+  /** Template metadata */
+  template: {
+    id: string;
+    name: string;
+    description: string;
+    stack: string;
+    tags: string[];
+    maintainer?: string;
+    docsUrl?: string;
+  };
+
+  /** Monorepo-specific configuration */
+  monorepo?: MonorepoConfig;
+
+  /** Template-specific prompts */
+  prompts?: TemplatePrompt[];
+
+  /** Transformations to apply after cloning */
+  transforms?: TemplateTransform[];
+
+  /** Feature toggles - map of feature name to paths to remove if not selected */
+  features?: Record<string, string[]>;
+
+  /** Post-clone actions */
+  postActions?: PostActionConfig;
+}
+
+/**
+ * Monorepo context detected from environment
+ */
+export interface MonorepoContext {
+  /** Whether we detected a monorepo */
+  isMonorepo: boolean;
+  /** Root directory of the monorepo */
+  rootDir: string;
+  /** Path to turbo.json */
+  turboConfigPath?: string;
+  /** Path to workspace config (pnpm-workspace.yaml, etc.) */
+  workspaceConfigPath?: string;
+  /** Detected package manager */
+  packageManager: PackageManager;
+  /** Path to base tsconfig if found */
+  baseTsconfig?: string;
+}
+
+/**
+ * Remote template registry entry (for browseable templates)
+ */
+export interface RegistryTemplate {
+  /** Unique identifier */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Short description */
+  description: string;
+  /** Stack ID */
+  stack: string;
+  /** Searchable tags */
+  tags: string[];
+  /** Git URL in giget format */
+  gitUrl: string;
+  /** Specific branch (optional) */
+  branch?: string;
+}
+
+/**
+ * Remote template registry format
+ */
+export interface TemplateRegistry {
+  /** Registry version */
+  version: string;
+  /** List of templates */
+  templates: RegistryTemplate[];
 }
