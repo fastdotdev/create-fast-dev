@@ -38,11 +38,11 @@ pnpm dev:cli create my-app -t nextjs-starter
 **Option 2: Build and link globally**
 ```bash
 # Build and link to test as `create-fast-dev`
-pnpm link:cli
+pnpm cli:link
 
 # Now you can use it like a real install
 create-fast-dev --help
-npx create-fast-dev my-app
+create-fast-dev my-app
 ```
 
 **Option 3: Watch mode**
@@ -133,6 +133,74 @@ Templates are defined in `packages/core/src/templates/registry.ts`:
   tags: ['tag1', 'tag2'],
 }
 ```
+
+## Testing Templates Locally
+
+When developing or testing templates, you can use local directories instead of pushing to GitHub. This enables fast iteration without remote round-trips.
+
+### Using Local Templates
+
+Pass a local path to the `--template` flag:
+
+```bash
+# Relative path
+pnpm dev create my-app --template ./path/to/template
+
+# Absolute path
+pnpm dev create my-app --template /home/user/templates/my-template
+
+# Home directory (~ is expanded automatically)
+pnpm dev create my-app --template ~/templates/my-template
+
+# Parent directory
+pnpm dev create my-app --template ../my-template
+```
+
+### How It Works
+
+- Local paths are detected by checking for `./`, `../`, `~/`, or absolute paths
+- The template directory is copied (not symlinked) to match production behavior
+- `fast-dev.config.json` is loaded from the copied template
+- All transformations run normally
+
+### Example Workflow
+
+1. **Create a test template directory:**
+   ```bash
+   mkdir -p ~/templates/test-template
+   cd ~/templates/test-template
+
+   # Add a package.json
+   echo '{"name": "test-template", "version": "1.0.0"}' > package.json
+
+   # Add a config file (optional)
+   cat > fast-dev.config.json << 'EOF'
+   {
+     "transforms": [
+       { "type": "builtin", "transformer": "rename-package" }
+     ]
+   }
+   EOF
+   ```
+
+2. **Test the template:**
+   ```bash
+   cd /path/to/create-fast-dev
+   pnpm dev create test-app --template ~/templates/test-template --debug
+   ```
+
+3. **Iterate:** Make changes to your template, run again. No git push needed.
+
+### Tips
+
+- Use `--debug` to see detailed logs about template processing
+- Use `--no-install` to skip dependency installation during testing
+- Use `--no-git` to skip git initialization
+- Use `--yes` to skip interactive prompts and use defaults
+- The `playground/` directory is gitignored and ideal for output:
+  ```bash
+  pnpm dev create playground/test-app --template ./my-template
+  ```
 
 ## Creating a Release
 

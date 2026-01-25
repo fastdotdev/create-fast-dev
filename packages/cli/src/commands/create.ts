@@ -6,17 +6,20 @@ import type { InstallationMode, MonorepoContext } from "@repo/core";
 import {
   cleanupTemplateConfig,
   CLI_NAME,
+  copyLocalTemplate,
   createFallbackTemplate,
   createLogger,
   detectMonorepo,
   detectPackageManager,
   EXIT_CODE,
+  expandTilde,
   fetchTemplate,
   getConfig,
   getTargetDir,
   getTemplateBySlug,
   initializeGit,
   installDependencies,
+  isLocalPath,
   loadTemplateConfig,
   mergeConfigIntoTemplate,
   promptPostActions,
@@ -27,6 +30,8 @@ import {
 } from "@repo/core";
 import { defineCommand } from "citty";
 import pc from "picocolors";
+
+import { formatError } from "../utils/errors.js";
 
 export const createCommand = defineCommand({
   meta: {
@@ -119,26 +124,44 @@ export const createCommand = defineCommand({
       // Get project name from positional arg or prompt
       let projectName = args.name;
 
-      // // Select template - try local registry first, then remote
-      // let template: Template | undefined | null = args.template
-      //   ? (getTemplateBySlug(args.template) ??
-      //     (await getRemoteTemplateBySlug(args.template)))
-      //   : await promptTemplateSelection();
+      // Check if template arg is a local path
+      let template;
+      let isLocal = false;
+      let localPath: string | undefined;
 
-      // Select template
-      let template = args.template
-        ? getTemplateBySlug(args.template)
-        : await promptTemplateSelection();
+      if (args.template && isLocalPath(args.template)) {
+        // Expand ~ and resolve to absolute path
+        const expanded = expandTilde(args.template);
+        localPath = resolve(process.cwd(), expanded);
 
-      if (!template) {
-        if (args.template) {
-          p.log.error(`Template not found: ${args.template}`);
-          p.log.info("Run 'create-fast-dev list' to see available templates");
+        // Validate path exists
+        try {
+          await access(localPath, constants.F_OK);
+        } catch {
+          p.log.error(`Local template not found: ${localPath}`);
+          process.exit(EXIT_CODE.ERROR);
         }
-        process.exit(EXIT_CODE.ERROR);
-      }
 
-      logger.debug(`Selected template: ${template.slug}`);
+        // Create a minimal template object for local use
+        template = createFallbackTemplate(`local:${localPath}`);
+        isLocal = true;
+        logger.debug(`Using local template: ${localPath}`);
+      } else {
+        // Select template from registry
+        template = args.template
+          ? getTemplateBySlug(args.template)
+          : await promptTemplateSelection();
+
+        if (!template) {
+          if (args.template) {
+            p.log.error(`Template not found: ${args.template}`);
+            p.log.info("Run 'create-fast-dev list' to see available templates");
+          }
+          process.exit(EXIT_CODE.ERROR);
+        }
+
+        logger.debug(`Selected template: ${template.slug}`);
+      }
 
       // Get project name if not provided
       if (!projectName) {
@@ -151,20 +174,40 @@ export const createCommand = defineCommand({
         process.exit(EXIT_CODE.ERROR);
       }
 
-      // Determine output directory based on mode
-      let outputDir: string;
+      // Determine default output directory based on mode
+      let defaultOutputDir: string;
 
       if (installMode === "monorepo" && monorepoContext) {
         // In monorepo mode, place in apps/ or packages/ based on template config or flag
         const targetType = args.target === "packages" ? "package" : "app";
         const targetDir = getTargetDir(monorepoContext.rootDir, targetType);
-        outputDir = resolve(targetDir, projectName);
+        defaultOutputDir = resolve(targetDir, projectName);
         logger.debug(`Monorepo target: ${targetDir}`);
       } else {
         // Standalone mode
-        outputDir = args.output
+        defaultOutputDir = args.output
           ? resolve(args.output, projectName)
           : resolve(process.cwd(), projectName);
+      }
+
+      // Prompt for output directory (or use default with --yes)
+      let outputDir: string;
+
+      if (args.yes) {
+        outputDir = defaultOutputDir;
+      } else {
+        const outputDirInput = await p.text({
+          message: "Output directory",
+          placeholder: defaultOutputDir,
+          defaultValue: defaultOutputDir,
+        });
+
+        if (p.isCancel(outputDirInput)) {
+          p.cancel("Operation cancelled");
+          process.exit(EXIT_CODE.CANCELLED);
+        }
+
+        outputDir = outputDirInput as string;
       }
 
       // Check if directory exists
@@ -179,23 +222,36 @@ export const createCommand = defineCommand({
       // Start the spinner
       const s = p.spinner();
 
-      // Clone template first (we need config file to know prompts)
-      s.start("Downloading template...");
-      logger.debug(`Fetching template from ${template.gitUrl}`);
+      // Clone/copy template first (we need config file to know prompts)
+      if (isLocal && localPath) {
+        s.start("Copying local template...");
+        logger.debug(`Copying template from ${localPath} to ${outputDir}`);
 
-      try {
-        await fetchTemplate(template, {
-          dir: outputDir,
-          force: false,
-        });
-        s.stop("Template downloaded");
-      } catch (error) {
-        s.stop("Failed to download template");
-        logger.error("Template fetch error:", error);
-        p.log.error(
-          error instanceof Error ? error.message : "Failed to download template"
-        );
-        process.exit(EXIT_CODE.ERROR);
+        try {
+          await copyLocalTemplate(localPath, outputDir);
+          s.stop("Template copied");
+        } catch (error) {
+          s.stop("Failed to copy template");
+          logger.debug("Template copy error:", error);
+          p.log.error(formatError(error, { template: localPath }));
+          process.exit(EXIT_CODE.ERROR);
+        }
+      } else {
+        s.start("Downloading template...");
+        logger.debug(`Fetching template from ${template.gitUrl} to ${outputDir}`);
+
+        try {
+          await fetchTemplate(template, {
+            dir: outputDir,
+            force: false,
+          });
+          s.stop("Template downloaded");
+        } catch (error) {
+          s.stop("Failed to download template");
+          logger.debug("Template fetch error:", error);
+          p.log.error(formatError(error, { template: template.slug }));
+          process.exit(EXIT_CODE.ERROR);
+        }
       }
 
       // Load template config from fast-dev.config.json (if exists)
@@ -282,10 +338,8 @@ export const createCommand = defineCommand({
         s.stop("Customizations applied");
       } catch (error) {
         s.stop("Failed to apply customizations");
-        logger.error("Transform error:", error);
-        p.log.error(
-          error instanceof Error ? error.message : "Failed to apply customizations"
-        );
+        logger.debug("Transform error:", error);
+        p.log.error(formatError(error, { template: template.slug }));
         process.exit(EXIT_CODE.ERROR);
       }
 
@@ -358,10 +412,8 @@ export const createCommand = defineCommand({
 
       p.outro(pc.green("Happy coding!"));
     } catch (error) {
-      logger.error("Unexpected error:", error);
-      p.log.error(
-        error instanceof Error ? error.message : "An unexpected error occurred"
-      );
+      logger.debug("Unexpected error:", error);
+      p.log.error(formatError(error));
       process.exit(EXIT_CODE.ERROR);
     }
   },

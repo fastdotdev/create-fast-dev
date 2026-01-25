@@ -3,8 +3,10 @@ export type { FetchOptions, FetchResult } from "./templates/index.js";
 export {
   cleanupTemplateConfig,
   clearRegistryCache,
+  copyLocalTemplate,
   createFallbackTemplate,
   createTemplateFromConfig,
+  expandTilde,
   fetchRemoteRegistry,
   fetchTemplate,
   getAllTemplates,
@@ -13,6 +15,7 @@ export {
   getStackById,
   getTemplateBySlug,
   getTemplatesByStack,
+  isLocalPath,
   loadTemplateConfig,
   mergeConfigIntoTemplate,
   registryTemplateToTemplate,

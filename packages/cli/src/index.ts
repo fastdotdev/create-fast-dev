@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 import { CLI_NAME, CLI_VERSION } from "@repo/shared";
 import { defineCommand, runMain } from "citty";
+import pc from "picocolors";
 
 import { configCommand } from "./commands/config.js";
 import { createCommand } from "./commands/create.js";
 import { listCommand } from "./commands/list.js";
+import { formatError } from "./utils/errors.js";
 
 const main = defineCommand({
   meta: {
@@ -32,4 +34,24 @@ if (
   process.argv.splice(2, 0, "create");
 }
 
-runMain(main);
+// Global error handlers for clean error output
+process.on("unhandledRejection", (error) => {
+  console.error(pc.red("Error:"), formatError(error));
+  process.exit(1);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error(pc.red("Error:"), formatError(error));
+  process.exit(1);
+});
+
+async function run() {
+  try {
+    await runMain(main);
+  } catch (error) {
+    console.error(pc.red("Error:"), formatError(error));
+    process.exit(1);
+  }
+}
+
+run();

@@ -6,7 +6,13 @@ export {
   mergeConfigIntoTemplate,
 } from "./config-loader.js";
 export type { FetchOptions, FetchResult } from "./fetcher.js";
-export { fetchTemplate, validateTemplateUrl } from "./fetcher.js";
+export {
+  copyLocalTemplate,
+  expandTilde,
+  fetchTemplate,
+  isLocalPath,
+  validateTemplateUrl,
+} from "./fetcher.js";
 export {
   getAllTemplates,
   getTemplateBySlug,
