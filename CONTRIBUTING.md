@@ -38,11 +38,11 @@ pnpm dev:cli create my-app -t nextjs-starter
 **Option 2: Build and link globally**
 ```bash
 # Build and link to test as `create-fast-dev`
-pnpm link:cli
+pnpm cli:link
 
 # Now you can use it like a real install
 create-fast-dev --help
-npx create-fast-dev my-app
+create-fast-dev my-app
 ```
 
 **Option 3: Watch mode**
