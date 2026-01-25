@@ -28,6 +28,8 @@ import {
 import { defineCommand } from "citty";
 import pc from "picocolors";
 
+import { formatError } from "../utils/errors.js";
+
 export const createCommand = defineCommand({
   meta: {
     name: "create",
@@ -191,10 +193,8 @@ export const createCommand = defineCommand({
         s.stop("Template downloaded");
       } catch (error) {
         s.stop("Failed to download template");
-        logger.error("Template fetch error:", error);
-        p.log.error(
-          error instanceof Error ? error.message : "Failed to download template"
-        );
+        logger.debug("Template fetch error:", error);
+        p.log.error(formatError(error, { template: template.slug }));
         process.exit(EXIT_CODE.ERROR);
       }
 
@@ -282,10 +282,8 @@ export const createCommand = defineCommand({
         s.stop("Customizations applied");
       } catch (error) {
         s.stop("Failed to apply customizations");
-        logger.error("Transform error:", error);
-        p.log.error(
-          error instanceof Error ? error.message : "Failed to apply customizations"
-        );
+        logger.debug("Transform error:", error);
+        p.log.error(formatError(error, { template: template.slug }));
         process.exit(EXIT_CODE.ERROR);
       }
 
@@ -358,10 +356,8 @@ export const createCommand = defineCommand({
 
       p.outro(pc.green("Happy coding!"));
     } catch (error) {
-      logger.error("Unexpected error:", error);
-      p.log.error(
-        error instanceof Error ? error.message : "An unexpected error occurred"
-      );
+      logger.debug("Unexpected error:", error);
+      p.log.error(formatError(error));
       process.exit(EXIT_CODE.ERROR);
     }
   },
