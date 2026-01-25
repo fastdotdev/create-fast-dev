@@ -142,3 +142,16 @@ export function getPackagesDir(rootDir: string): string {
 export function getTargetDir(rootDir: string, targetType: "app" | "package"): string {
   return targetType === "app" ? getAppsDir(rootDir) : getPackagesDir(rootDir);
 }
+
+/**
+ * Check if a template directory is itself a monorepo (has turbo.json)
+ */
+export async function isTemplateMonorepo(templatePath: string): Promise<boolean> {
+  const turboPath = join(templatePath, "turbo.json");
+  try {
+    await access(turboPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
