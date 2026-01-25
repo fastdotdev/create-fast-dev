@@ -256,8 +256,8 @@ describe("registry-remote", () => {
       const result = await getRemoteTemplates({ refresh: true });
 
       expect(result).toHaveLength(2);
-      expect(result[0].id).toBe("nextjs-blog");
-      expect(result[1].id).toBe("expo-app");
+      expect(result[0]!.id).toBe("nextjs-blog");
+      expect(result[1]!.id).toBe("expo-app");
     });
 
     it("should return empty array on error", async () => {
@@ -279,28 +279,28 @@ describe("registry-remote", () => {
       const result = await searchRemoteTemplates("Next.js", { refresh: true });
 
       expect(result).toHaveLength(1);
-      expect(result[0].name).toBe("Next.js Blog");
+      expect(result[0]!.name).toBe("Next.js Blog");
     });
 
     it("should filter by description", async () => {
       const result = await searchRemoteTemplates("mobile", { refresh: true });
 
       expect(result).toHaveLength(1);
-      expect(result[0].id).toBe("expo-app");
+      expect(result[0]!.id).toBe("expo-app");
     });
 
     it("should filter by tags", async () => {
       const result = await searchRemoteTemplates("mdx", { refresh: true });
 
       expect(result).toHaveLength(1);
-      expect(result[0].id).toBe("nextjs-blog");
+      expect(result[0]!.id).toBe("nextjs-blog");
     });
 
     it("should be case insensitive", async () => {
       const result = await searchRemoteTemplates("BLOG", { refresh: true });
 
       expect(result).toHaveLength(1);
-      expect(result[0].id).toBe("nextjs-blog");
+      expect(result[0]!.id).toBe("nextjs-blog");
     });
 
     it("should return empty array when no matches", async () => {
