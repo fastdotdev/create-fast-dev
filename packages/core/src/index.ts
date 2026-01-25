@@ -6,6 +6,7 @@ export {
   copyLocalTemplate,
   createFallbackTemplate,
   createTemplateFromConfig,
+  expandTilde,
   fetchRemoteRegistry,
   fetchTemplate,
   getAllTemplates,

@@ -12,6 +12,7 @@ import {
   detectMonorepo,
   detectPackageManager,
   EXIT_CODE,
+  expandTilde,
   fetchTemplate,
   getConfig,
   getTargetDir,
@@ -129,8 +130,9 @@ export const createCommand = defineCommand({
       let localPath: string | undefined;
 
       if (args.template && isLocalPath(args.template)) {
-        // Resolve to absolute path
-        localPath = resolve(process.cwd(), args.template);
+        // Expand ~ and resolve to absolute path
+        const expanded = expandTilde(args.template);
+        localPath = resolve(process.cwd(), expanded);
 
         // Validate path exists
         try {
@@ -172,20 +174,40 @@ export const createCommand = defineCommand({
         process.exit(EXIT_CODE.ERROR);
       }
 
-      // Determine output directory based on mode
-      let outputDir: string;
+      // Determine default output directory based on mode
+      let defaultOutputDir: string;
 
       if (installMode === "monorepo" && monorepoContext) {
         // In monorepo mode, place in apps/ or packages/ based on template config or flag
         const targetType = args.target === "packages" ? "package" : "app";
         const targetDir = getTargetDir(monorepoContext.rootDir, targetType);
-        outputDir = resolve(targetDir, projectName);
+        defaultOutputDir = resolve(targetDir, projectName);
         logger.debug(`Monorepo target: ${targetDir}`);
       } else {
         // Standalone mode
-        outputDir = args.output
+        defaultOutputDir = args.output
           ? resolve(args.output, projectName)
           : resolve(process.cwd(), projectName);
+      }
+
+      // Prompt for output directory (or use default with --yes)
+      let outputDir: string;
+
+      if (args.yes) {
+        outputDir = defaultOutputDir;
+      } else {
+        const outputDirInput = await p.text({
+          message: "Output directory",
+          placeholder: defaultOutputDir,
+          defaultValue: defaultOutputDir,
+        });
+
+        if (p.isCancel(outputDirInput)) {
+          p.cancel("Operation cancelled");
+          process.exit(EXIT_CODE.CANCELLED);
+        }
+
+        outputDir = outputDirInput as string;
       }
 
       // Check if directory exists
@@ -203,7 +225,7 @@ export const createCommand = defineCommand({
       // Clone/copy template first (we need config file to know prompts)
       if (isLocal && localPath) {
         s.start("Copying local template...");
-        logger.debug(`Copying template from ${localPath}`);
+        logger.debug(`Copying template from ${localPath} to ${outputDir}`);
 
         try {
           await copyLocalTemplate(localPath, outputDir);
@@ -216,7 +238,7 @@ export const createCommand = defineCommand({
         }
       } else {
         s.start("Downloading template...");
-        logger.debug(`Fetching template from ${template.gitUrl}`);
+        logger.debug(`Fetching template from ${template.gitUrl} to ${outputDir}`);
 
         try {
           await fetchTemplate(template, {

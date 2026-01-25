@@ -149,13 +149,16 @@ pnpm dev create my-app --template ./path/to/template
 # Absolute path
 pnpm dev create my-app --template /home/user/templates/my-template
 
+# Home directory (~ is expanded automatically)
+pnpm dev create my-app --template ~/templates/my-template
+
 # Parent directory
 pnpm dev create my-app --template ../my-template
 ```
 
 ### How It Works
 
-- Local paths are detected by checking for `./`, `../`, or absolute paths
+- Local paths are detected by checking for `./`, `../`, `~/`, or absolute paths
 - The template directory is copied (not symlinked) to match production behavior
 - `fast-dev.config.json` is loaded from the copied template
 - All transformations run normally

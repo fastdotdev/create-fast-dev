@@ -1,5 +1,6 @@
 import { cp } from "node:fs/promises";
-import { isAbsolute } from "node:path";
+import { homedir } from "node:os";
+import { isAbsolute, join } from "node:path";
 
 import type { Template } from "@repo/shared";
 import { DEFAULT_BRANCH } from "@repo/shared";
@@ -12,8 +13,21 @@ export function isLocalPath(templateArg: string): boolean {
   return (
     templateArg.startsWith("./") ||
     templateArg.startsWith("../") ||
+    templateArg.startsWith("~/") ||
+    templateArg === "~" ||
     isAbsolute(templateArg)
   );
+}
+
+/**
+ * Expand ~ to the user's home directory
+ */
+export function expandTilde(path: string): string {
+  if (path === "~") return homedir();
+  if (path.startsWith("~/")) {
+    return join(homedir(), path.slice(2));
+  }
+  return path;
 }
 
 /**
