@@ -2,9 +2,11 @@ import type { TransformContext, Transformer } from "@repo/shared";
 
 import type { Logger } from "../logger/index.js";
 import { envSetupTransformer } from "./builtin/env-setup.js";
+import { monorepoAdaptTransformer } from "./builtin/monorepo-adapt.js";
 import { readmePersonalizeTransformer } from "./builtin/readme-personalize.js";
 import { renamePackageTransformer } from "./builtin/rename-package.js";
 import { toggleFeatureTransformer } from "./builtin/toggle-feature.js";
+import { tsconfigAdaptTransformer } from "./builtin/tsconfig-adapt.js";
 
 /**
  * Registry of built-in transformers
@@ -14,6 +16,8 @@ const builtinTransformers: Map<string, Transformer> = new Map([
   ["env-setup", envSetupTransformer],
   ["toggle-feature", toggleFeatureTransformer],
   ["readme-personalize", readmePersonalizeTransformer],
+  ["monorepo-adapt", monorepoAdaptTransformer],
+  ["tsconfig-adapt", tsconfigAdaptTransformer],
 ]);
 
 /**

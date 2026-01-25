@@ -1,27 +1,48 @@
 // Templates
 export type { FetchOptions, FetchResult } from "./templates/index.js";
 export {
+  cleanupTemplateConfig,
+  clearRegistryCache,
+  createFallbackTemplate,
+  createTemplateFromConfig,
+  fetchRemoteRegistry,
   fetchTemplate,
   getAllTemplates,
+  getRemoteTemplateBySlug,
+  getRemoteTemplates,
   getStackById,
   getTemplateBySlug,
   getTemplatesByStack,
+  loadTemplateConfig,
+  mergeConfigIntoTemplate,
+  registryTemplateToTemplate,
+  searchRemoteTemplates,
   searchTemplates,
   stacks,
   templates,
   validateTemplateUrl,
 } from "./templates/index.js";
 
+// Monorepo detection
+export {
+  detectMonorepo,
+  getAppsDir,
+  getPackagesDir,
+  getTargetDir,
+} from "./monorepo/index.js";
+
 // Transforms
 export {
   envSetupTransformer,
   getTransformer,
   listTransformers,
+  monorepoAdaptTransformer,
   readmePersonalizeTransformer,
   registerTransformer,
   renamePackageTransformer,
   runTransformations,
   toggleFeatureTransformer,
+  tsconfigAdaptTransformer,
 } from "./transform/index.js";
 
 // Config
@@ -65,9 +86,16 @@ export {
 // Re-export types from shared
 export type {
   CliOptions,
+  InstallationMode,
+  MonorepoConfig,
+  MonorepoContext,
+  MonorepoTargetType,
   PackageManager,
+  RegistryTemplate,
   Template,
+  TemplateConfig,
   TemplatePrompt,
+  TemplateRegistry,
   TemplateStack,
   TemplateTransform,
   TransformContext,
