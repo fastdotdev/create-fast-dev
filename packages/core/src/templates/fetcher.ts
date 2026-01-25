@@ -1,6 +1,27 @@
+import { cp } from "node:fs/promises";
+import { isAbsolute } from "node:path";
+
 import type { Template } from "@repo/shared";
 import { DEFAULT_BRANCH } from "@repo/shared";
 import { downloadTemplate } from "giget";
+
+/**
+ * Check if a template argument is a local file path
+ */
+export function isLocalPath(templateArg: string): boolean {
+  return (
+    templateArg.startsWith("./") ||
+    templateArg.startsWith("../") ||
+    isAbsolute(templateArg)
+  );
+}
+
+/**
+ * Copy a local template directory to the destination
+ */
+export async function copyLocalTemplate(source: string, dest: string): Promise<void> {
+  await cp(source, dest, { recursive: true });
+}
 
 export interface FetchOptions {
   /** Target directory for the template */

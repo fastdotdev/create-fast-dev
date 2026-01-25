@@ -6,6 +6,7 @@ import type { InstallationMode, MonorepoContext } from "@repo/core";
 import {
   cleanupTemplateConfig,
   CLI_NAME,
+  copyLocalTemplate,
   createFallbackTemplate,
   createLogger,
   detectMonorepo,
@@ -17,6 +18,7 @@ import {
   getTemplateBySlug,
   initializeGit,
   installDependencies,
+  isLocalPath,
   loadTemplateConfig,
   mergeConfigIntoTemplate,
   promptPostActions,
@@ -121,26 +123,43 @@ export const createCommand = defineCommand({
       // Get project name from positional arg or prompt
       let projectName = args.name;
 
-      // // Select template - try local registry first, then remote
-      // let template: Template | undefined | null = args.template
-      //   ? (getTemplateBySlug(args.template) ??
-      //     (await getRemoteTemplateBySlug(args.template)))
-      //   : await promptTemplateSelection();
+      // Check if template arg is a local path
+      let template;
+      let isLocal = false;
+      let localPath: string | undefined;
 
-      // Select template
-      let template = args.template
-        ? getTemplateBySlug(args.template)
-        : await promptTemplateSelection();
+      if (args.template && isLocalPath(args.template)) {
+        // Resolve to absolute path
+        localPath = resolve(process.cwd(), args.template);
 
-      if (!template) {
-        if (args.template) {
-          p.log.error(`Template not found: ${args.template}`);
-          p.log.info("Run 'create-fast-dev list' to see available templates");
+        // Validate path exists
+        try {
+          await access(localPath, constants.F_OK);
+        } catch {
+          p.log.error(`Local template not found: ${localPath}`);
+          process.exit(EXIT_CODE.ERROR);
         }
-        process.exit(EXIT_CODE.ERROR);
-      }
 
-      logger.debug(`Selected template: ${template.slug}`);
+        // Create a minimal template object for local use
+        template = createFallbackTemplate(`local:${localPath}`);
+        isLocal = true;
+        logger.debug(`Using local template: ${localPath}`);
+      } else {
+        // Select template from registry
+        template = args.template
+          ? getTemplateBySlug(args.template)
+          : await promptTemplateSelection();
+
+        if (!template) {
+          if (args.template) {
+            p.log.error(`Template not found: ${args.template}`);
+            p.log.info("Run 'create-fast-dev list' to see available templates");
+          }
+          process.exit(EXIT_CODE.ERROR);
+        }
+
+        logger.debug(`Selected template: ${template.slug}`);
+      }
 
       // Get project name if not provided
       if (!projectName) {
@@ -181,21 +200,36 @@ export const createCommand = defineCommand({
       // Start the spinner
       const s = p.spinner();
 
-      // Clone template first (we need config file to know prompts)
-      s.start("Downloading template...");
-      logger.debug(`Fetching template from ${template.gitUrl}`);
+      // Clone/copy template first (we need config file to know prompts)
+      if (isLocal && localPath) {
+        s.start("Copying local template...");
+        logger.debug(`Copying template from ${localPath}`);
 
-      try {
-        await fetchTemplate(template, {
-          dir: outputDir,
-          force: false,
-        });
-        s.stop("Template downloaded");
-      } catch (error) {
-        s.stop("Failed to download template");
-        logger.debug("Template fetch error:", error);
-        p.log.error(formatError(error, { template: template.slug }));
-        process.exit(EXIT_CODE.ERROR);
+        try {
+          await copyLocalTemplate(localPath, outputDir);
+          s.stop("Template copied");
+        } catch (error) {
+          s.stop("Failed to copy template");
+          logger.debug("Template copy error:", error);
+          p.log.error(formatError(error, { template: localPath }));
+          process.exit(EXIT_CODE.ERROR);
+        }
+      } else {
+        s.start("Downloading template...");
+        logger.debug(`Fetching template from ${template.gitUrl}`);
+
+        try {
+          await fetchTemplate(template, {
+            dir: outputDir,
+            force: false,
+          });
+          s.stop("Template downloaded");
+        } catch (error) {
+          s.stop("Failed to download template");
+          logger.debug("Template fetch error:", error);
+          p.log.error(formatError(error, { template: template.slug }));
+          process.exit(EXIT_CODE.ERROR);
+        }
       }
 
       // Load template config from fast-dev.config.json (if exists)
