@@ -32,6 +32,7 @@ export {
   getAppsDir,
   getPackagesDir,
   getTargetDir,
+  isTemplateMonorepo,
 } from "./monorepo/index.js";
 
 // Transforms

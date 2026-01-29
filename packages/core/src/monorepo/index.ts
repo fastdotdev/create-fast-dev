@@ -1,1 +1,1 @@
-export { detectMonorepo, getAppsDir, getPackagesDir, getTargetDir } from "./detect.js";
+export * from "./detect.js";

@@ -1,4 +1,4 @@
-import { access, constants } from "node:fs/promises";
+import { access, constants, readdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import * as p from "@clack/prompts";
@@ -15,11 +15,11 @@ import {
   expandTilde,
   fetchTemplate,
   getConfig,
-  getTargetDir,
   getTemplateBySlug,
   initializeGit,
   installDependencies,
   isLocalPath,
+  isTemplateMonorepo,
   loadTemplateConfig,
   mergeConfigIntoTemplate,
   promptPostActions,
@@ -97,29 +97,9 @@ export const createCommand = defineCommand({
     p.intro(pc.bgCyan(pc.black(` ${CLI_NAME} `)));
 
     try {
-      // Detect monorepo mode
+      // Monorepo detection happens after outputDir is determined
       let monorepoContext: MonorepoContext | null = null;
       let installMode: InstallationMode = "standalone";
-
-      if (!args["no-monorepo"]) {
-        monorepoContext = await detectMonorepo(process.cwd());
-
-        if (monorepoContext || args.monorepo) {
-          installMode = "monorepo";
-
-          if (!monorepoContext && args.monorepo) {
-            p.log.error("--monorepo flag set but no Turborepo detected");
-            p.log.info("Make sure you're inside a directory with turbo.json");
-            process.exit(EXIT_CODE.ERROR);
-          }
-
-          if (monorepoContext) {
-            p.log.info(`Monorepo detected: ${monorepoContext.rootDir}`);
-          }
-        }
-      }
-
-      logger.debug(`Installation mode: ${installMode}`);
 
       // Get project name from positional arg or prompt
       let projectName = args.name;
@@ -174,20 +154,17 @@ export const createCommand = defineCommand({
         process.exit(EXIT_CODE.ERROR);
       }
 
-      // Determine default output directory based on mode
+      // Determine default output directory (monorepo detection happens after)
       let defaultOutputDir: string;
 
-      if (installMode === "monorepo" && monorepoContext) {
-        // In monorepo mode, place in apps/ or packages/ based on template config or flag
-        const targetType = args.target === "packages" ? "package" : "app";
-        const targetDir = getTargetDir(monorepoContext.rootDir, targetType);
-        defaultOutputDir = resolve(targetDir, projectName);
-        logger.debug(`Monorepo target: ${targetDir}`);
+      if (args.output) {
+        // Explicit output directory is used as-is (final destination)
+        const expanded = expandTilde(args.output);
+        defaultOutputDir = resolve(process.cwd(), expanded);
+        logger.debug(`Using explicit output directory: ${defaultOutputDir}`);
       } else {
-        // Standalone mode
-        defaultOutputDir = args.output
-          ? resolve(args.output, projectName)
-          : resolve(process.cwd(), projectName);
+        // Default to current working directory
+        defaultOutputDir = resolve(process.cwd(), projectName);
       }
 
       // Prompt for output directory (or use default with --yes)
@@ -210,20 +187,70 @@ export const createCommand = defineCommand({
         outputDir = outputDirInput as string;
       }
 
-      // Check if directory exists
+      // Check if directory exists and handle accordingly
       try {
         await access(outputDir, constants.F_OK);
-        p.log.error(`Directory already exists: ${outputDir}`);
-        process.exit(EXIT_CODE.ERROR);
+        // Directory exists - check if it's empty
+        const files = await readdir(outputDir);
+        if (files.length > 0) {
+          // Directory is not empty - prompt for confirmation
+          if (args.yes) {
+            p.log.error(`Directory is not empty: ${outputDir}`);
+            process.exit(EXIT_CODE.ERROR);
+          }
+
+          const shouldContinue = await p.confirm({
+            message: `Directory "${outputDir}" is not empty. Continue anyway?`,
+            initialValue: false,
+          });
+
+          if (p.isCancel(shouldContinue) || !shouldContinue) {
+            p.cancel("Operation cancelled");
+            process.exit(EXIT_CODE.CANCELLED);
+          }
+        }
+        // Directory exists but is empty - proceed
       } catch {
-        // Directory doesn't exist, good
+        // Directory doesn't exist - proceed
       }
+
+      // Detect monorepo mode based on output directory
+      if (!args["no-monorepo"]) {
+        monorepoContext = await detectMonorepo(outputDir);
+
+        if (monorepoContext || args.monorepo) {
+          installMode = "monorepo";
+
+          if (!monorepoContext && args.monorepo) {
+            p.log.error("--monorepo flag set but no Turborepo detected");
+            p.log.info("Make sure the output directory is inside a Turborepo");
+            process.exit(EXIT_CODE.ERROR);
+          }
+
+          if (monorepoContext) {
+            p.log.info(`Monorepo detected: ${monorepoContext.rootDir}`);
+          }
+        }
+      }
+
+      logger.debug(`Installation mode: ${installMode}`);
 
       // Start the spinner
       const s = p.spinner();
 
       // Clone/copy template first (we need config file to know prompts)
       if (isLocal && localPath) {
+        // Check if local template is a monorepo
+        const localIsMonorepo = await isTemplateMonorepo(localPath);
+        if (localIsMonorepo && installMode === "monorepo") {
+          p.log.error("Cannot add a monorepo template to an existing monorepo");
+          p.log.info(
+            "Monorepo templates contain their own turbo.json and workspace configuration."
+          );
+          p.log.info("Clone this template into a standalone directory instead.");
+          process.exit(EXIT_CODE.ERROR);
+        }
+
         s.start("Copying local template...");
         logger.debug(`Copying template from ${localPath} to ${outputDir}`);
 
@@ -246,6 +273,18 @@ export const createCommand = defineCommand({
             force: false,
           });
           s.stop("Template downloaded");
+
+          // Check if remote template is a monorepo
+          const templateIsMonorepo = await isTemplateMonorepo(outputDir);
+          if (templateIsMonorepo && installMode === "monorepo") {
+            await rm(outputDir, { recursive: true, force: true });
+            p.log.error("Cannot clone a monorepo template into an existing monorepo");
+            p.log.info(
+              "Monorepo templates contain their own turbo.json and workspace configuration."
+            );
+            p.log.info("Clone this template into a standalone directory instead.");
+            process.exit(EXIT_CODE.ERROR);
+          }
         } catch (error) {
           s.stop("Failed to download template");
           logger.debug("Template fetch error:", error);

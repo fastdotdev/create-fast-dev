@@ -4,7 +4,13 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { detectMonorepo, getAppsDir, getPackagesDir, getTargetDir } from "./detect.js";
+import {
+  detectMonorepo,
+  getAppsDir,
+  getPackagesDir,
+  getTargetDir,
+  isTemplateMonorepo,
+} from "./detect.js";
 
 describe("detectMonorepo", () => {
   let tempDir: string;
@@ -154,5 +160,34 @@ describe("getTargetDir", () => {
 
   it("should return packages dir for package type", () => {
     expect(getTargetDir("/root", "package")).toBe("/root/packages");
+  });
+});
+
+describe("isTemplateMonorepo", () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "fast-dev-test-"));
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("should return true when turbo.json exists", async () => {
+    await writeFile(join(tempDir, "turbo.json"), "{}");
+
+    const result = await isTemplateMonorepo(tempDir);
+
+    expect(result).toBe(true);
+  });
+
+  it("should return false when turbo.json does not exist", async () => {
+    // Create a regular template without turbo.json
+    await writeFile(join(tempDir, "package.json"), "{}");
+
+    const result = await isTemplateMonorepo(tempDir);
+
+    expect(result).toBe(false);
   });
 });
